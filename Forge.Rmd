@@ -23,23 +23,29 @@ library(sf)
 library(leaflet)
 library(tidygeocoder)
 library(tidycensus)
-library(spData) #gives polygons for US States in data frame called us_states.
+#Package gives polygons for US States in data frame called us_states.
+library(spData)
 ```
 
 Now, we need to read the 2019 CDC Abortion Surveillance Data into our session. 
 ```{r}
-abortions_usa <- read.csv("abortions-distributed-by-state-2019.csv", skip = 1)
+abortions_usa <- read.csv("data/abortions-distributed-by-state-2019.csv", skip = 1)
 ```
 
 # Cleaning CDC Abortion Data
 For the purpose of this analysis, we will be considering only abortions that occur within each state, regardless of if abortion patients come from other states. We need to select only the rows and columns from the CDC data table that are relevant to this purpose. 
 
 ```{r}
-abortions_usa_1 <- abortions_usa[53, 2:53] #Select relevant rows and columns
-abortions_usa_1 <- rename(abortions_usa_1, Number_of_Abortions = State.Area) #Rename column to accurate, descriptive name
-abortions_usa_2 <- pivot_longer(abortions_usa_1, cols = 1:52, names_to = "State", values_to = "Number_of_Abortions_In_State") #Pivot data table longer for more sensible information presentation and to prep for palette creation, which creates palettes based on a column, not a row, of values
-abortions_usa_2 <- abortions_usa_2[2:52, ] #Select for relevant rows
-abortions_usa_2$Number_of_Abortions_In_State <- as.numeric(abortions_usa_2$Number_of_Abortions_In_State) #Transform Number_of_Abortions_In_State column from "character" class to "numeric" so that the colorNumeric palette can determine the range of the numbers and assign to color palette
+#Select relevant rows and columns
+abortions_usa_1 <- abortions_usa[53, 2:53]
+#Rename column to accurate, descriptive name
+abortions_usa_1 <- rename(abortions_usa_1, Number_of_Abortions = State.Area)
+#Pivot data table longer for more sensible information presentation and to prep for palette creation, which creates palettes based on a column, not a row, of values
+abortions_usa_2 <- pivot_longer(abortions_usa_1, cols = 1:52, names_to = "State", values_to = "Number_of_Abortions_In_State")
+ #Select for relevant rows
+abortions_usa_2 <- abortions_usa_2[2:52, ]
+#Transform Number_of_Abortions_In_State column from "character" class to "numeric" so that the colorNumeric palette can determine the range of the numbers and assign to color palette
+abortions_usa_2$Number_of_Abortions_In_State <- as.numeric(abortions_usa_2$Number_of_Abortions_In_State) 
 ```
 Now, let's make a palette for the Number of Abortions column that we can use on our map later. 
 ```{r}
@@ -50,18 +56,24 @@ In order to create a map, we will need to join the information from the data fra
 
 In order for this to occur, we will need so standardize the format of the names for the states between us_states and abortions_usa_2. 
 ```{r}
-abortions_usa_2$State <- gsub("\\..$", "", abortions_usa_2$State) #Removed excess periods from certain states' names
+#Removed excess periods from certain states' names
+abortions_usa_2$State <- gsub("\\..$", "", abortions_usa_2$State)
 
-abortions_usa_2$State <- gsub("\\.$", "", abortions_usa_2$State) #Removed excess periods from certain states' names
+#Removed excess periods from certain states' names
+abortions_usa_2$State <- gsub("\\.$", "", abortions_usa_2$State)
 
-abortions_usa_2$State <- gsub("[...]", "_", abortions_usa_2$State) #Replaced '..." with "_" in certain states
+#Replaced '..." with "_" in certain states
+abortions_usa_2$State <- gsub("[...]", "_", abortions_usa_2$State) 
 
-abortions_usa_2$State[33] <- "New_York" #renamed New York City and State entry to New York
+#Renamed New York City and State entry to New York
+abortions_usa_2$State[33] <- "New_York"
 
-us_states$NAME <- gsub(" ", "_", us_states$NAME) #replace every " " with a "_" in us_states data frame to match with the name format for states in abortions_usa_2
+#Replace every " " with a "_" in us_states data frame to match with the name format for states in abortions_usa_2
+us_states$NAME <- gsub(" ", "_", us_states$NAME) 
 ```
 We need to join us_states and abortions_usa_2 by state so palette can be correctly applied on our map.
 ```{r}
+#Join US shapefiles and Abortions data 
 us_states_abortions_joined <- inner_join(us_states, abortions_usa_2, by = c("NAME" = "State"))
 #Make palette for Number of Abortions in State
 palette_abortions <- colorNumeric(palette = "YlOrRd", 
@@ -69,6 +81,7 @@ palette_abortions <- colorNumeric(palette = "YlOrRd",
 ```
 # Map 1: Number of Abortions By State
 ```{r, warning = FALSE, message = FALSE}
+#Create map
 leaflet() %>%
   setView(lat = 40.730610, lng = -98.5556, zoom = 2) %>% 
   addProviderTiles(providers$OpenStreetMap) %>%
@@ -83,18 +96,20 @@ In order to calculate abortion rate, we need to collect population data for each
 ```{r results='hide', fig.keep='all', message = FALSE}
 #Import 2020 state population data from U.S. Census
 census_states <- get_decennial(geography = "state", variables = "P2_005N", year = 2020, geometry = TRUE, summary_var = "P1_001N", show_call = TRUE)
-#fix names to underscores to prepare for joining with abortions_usa_2
+#Fix names to underscores to prepare for joining with abortions_usa_2
 census_states$NAME <- gsub(" ", "_", census_states$NAME)
 ```
 Now, join census_states to abortions_usa_2 so that we can use the mutate() function from the dplyr package within tidyverse to create a new column which will calculate an abortion rate for each state.
 ```{r}
+#Join relevant columns of census_states to abortions_usa_2
 census_abortions_joined <- census_states |> 
   select(NAME, summary_value) |>
   inner_join(abortions_usa_2, 
-             by = c("NAME" = "State")) #Join relevant columns of census_states to abortions_usa_2
+             by = c("NAME" = "State"))
+#Create new column in census_abortions_joined that calculates abortions per capita for each state
 census_abortions_joined <- census_abortions_joined |> 
   mutate(abortions_per_capita = 
-           Number_of_Abortions_In_State / summary_value) #Create new column in census_abortions_joined that calculates abortions per capita for each state
+           Number_of_Abortions_In_State / summary_value) 
 #Make palette for Map 2
 palette_abortions_per_capita <- colorNumeric(
                                   palette = "YlOrRd", 
@@ -103,6 +118,7 @@ palette_abortions_per_capita <- colorNumeric(
 ```
 # Map 2: Abortions Per Capita in the United States
 ```{r, warning = FALSE}
+#Create map
 leaflet() %>%
   setView(lat = 40.730610, lng = -98.5556, zoom = 2) %>% 
   addProviderTiles(providers$OpenStreetMap) %>%
@@ -115,12 +131,14 @@ leaflet() %>%
 
 Let's read in the Red_Blue_States.csv. This data table was created based off of [analysis from FiveThirtyEight](https://fivethirtyeight.com/features/how-red-or-blue-is-your-state-your-congressional-district/), which labelled states as Red or Blue based off of the state's voting habits compared to the country's overall.  
 ```{r}
-red_blue_states <- read.csv("Red_Blue_States.csv") 
+#Load data about political lean
+red_blue_states <- read.csv("data/Red_Blue_States.csv") 
 #Join information on state political leanings with state abortions information
 census_abortions_party <- inner_join(census_abortions_joined, red_blue_states, by = c("NAME" = "State"))
 ```
 Let's select the states with the top 10 abortion rates and visualize the distribution of political leanings on a bar graph.
 ```{r}
+#Create data frame for states with the top 10 abortions per capita
 census_abortions_10 <- st_drop_geometry(census_abortions_party) |>
   arrange(desc(abortions_per_capita)) |> 
   head(10)
