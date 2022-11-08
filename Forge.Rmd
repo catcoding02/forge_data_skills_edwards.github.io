@@ -83,12 +83,16 @@ palette_abortions <- colorNumeric(palette = "YlOrRd",
 ```{r, warning = FALSE, message = FALSE}
 #Create map
 leaflet() %>%
-  setView(lat = 40.730610, lng = -98.5556, zoom = 2) %>% 
+  setView(lat = 40.730610, lng = -98.5556, zoom = 3.3) %>% 
   addProviderTiles(providers$OpenStreetMap) %>%
   addPolygons(data = us_states_abortions_joined, 
               weight = 1,
               fillColor = ~palette_abortions(Number_of_Abortions_In_State),
-              fillOpacity = 1)
+              fillOpacity = 1) %>%
+  addLegend(title = "Total Abortions in the State", 
+            position = c("bottomright"), 
+            pal = palette_abortions, 
+            values = us_states_abortions_joined$Number_of_Abortions_In_State)
 ```
 Normalizing data is important. By calculating an abortion rate and creating a color palette based upon rate over total abortions in the state, we can get a more accurate picture of abortion trends in the United States.  
 
@@ -120,12 +124,16 @@ palette_abortions_per_capita <- colorNumeric(
 ```{r, warning = FALSE}
 #Create map
 leaflet() %>%
-  setView(lat = 40.730610, lng = -98.5556, zoom = 2) %>% 
+  setView(lat = 40.730610, lng = -98.5556, zoom = 3.3) %>% 
   addProviderTiles(providers$OpenStreetMap) %>%
   addPolygons(data = census_abortions_joined, 
               weight = 1,
               fillColor = ~palette_abortions_per_capita(abortions_per_capita),
-              fillOpacity = 1)
+              fillOpacity = 1) %>%
+   addLegend(title = "Abortions Per Capita", 
+            position = c("bottomright"), 
+            pal = palette_abortions_per_capita, 
+            values = census_abortions_joined$abortions_per_capita)
 ```
 # Examining the States in with Top 10 Abortion Rates and Political Leaning
 
