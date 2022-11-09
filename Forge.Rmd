@@ -19,6 +19,7 @@ knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
 library(tidyverse)
 library(sf)
 library(leaflet)
+library(rgdal)
 library(tidycensus)
 #Package gives polygons for US States in data frame called us_states.
 library(spData)
