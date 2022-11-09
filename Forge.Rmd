@@ -17,11 +17,8 @@ First, you need to install and load the following packages:
 ```{r, warning = FALSE, message = FALSE}
 knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
 library(tidyverse)
-library(purrr)
-library(rgdal)
 library(sf)
 library(leaflet)
-library(tidygeocoder)
 library(tidycensus)
 #Package gives polygons for US States in data frame called us_states.
 library(spData)
